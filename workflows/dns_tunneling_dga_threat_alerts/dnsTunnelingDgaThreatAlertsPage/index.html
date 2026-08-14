@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DNS Tunneling/DGA Threat Alerts - BlueCat Gateway</title>
+<style>
+  @font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 300;
+    src: url('fonts/a4933e7a22e115be5a67.woff2') format('woff2'),
+         url('fonts/1856a170cff4f04b9a91.woff') format('woff');
+  }
+  @font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/0a69e1398f51230ddf80.woff2') format('woff2'),
+         url('fonts/3d8deabfbb86f3802d73.woff') format('woff');
+  }
+  @font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 600;
+    src: url('fonts/391803a1576f3c5289b2.woff2') format('woff2'),
+         url('fonts/c0ed32a3ea09e1328768.woff') format('woff');
+  }
+
+  :root {
+    color-scheme: light;
+    --text-primary: #161616;
+    --text-secondary: #525252;
+    --text-muted: #898781;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Open Sans', -apple-system, "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    margin: 0;
+    color: #161616;
+    background: #f4f4f4;
+  }
+
+  #topbar {
+    display: flex; align-items: center; height: 48px; padding: 0 8px;
+    background: #0a1624; color: #fff; position: relative;
+  }
+  .topbar-btn {
+    display: flex; align-items: center; gap: 6px;
+    height: 40px; padding: 0 12px; margin: 0 2px;
+    border: none; background: transparent; color: #fff;
+    font-family: inherit; font-size: 13px; cursor: pointer; border-radius: 2px;
+  }
+  .topbar-btn:hover { background: #1c2735; }
+  .topbar-btn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+  #topbar .brand {
+    position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+    display: flex; align-items: center; height: 48px;
+    font-size: 14px; font-weight: 600; letter-spacing: .02em; color: #fff; pointer-events: none;
+  }
+  #topbar .right { display: flex; align-items: center; margin-left: auto; position: relative; }
+  .topbar-menu {
+    position: absolute; top: 48px; right: 0; z-index: 30;
+    min-width: 210px; background: #fff; color: #161616;
+    border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,.18);
+    padding: 4px 0; display: none;
+  }
+  .topbar-menu.open { display: block; }
+  .topbar-menu .menu-heading { padding: 8px 16px 4px; font-size: 10px; color: #6f6f6f; text-transform: uppercase; letter-spacing: .03em; }
+  .topbar-menu a { display: block; padding: 8px 16px; font-size: 13px; color: #161616; text-decoration: none; white-space: nowrap; }
+  .topbar-menu a:hover { background: #e8e8e8; }
+  .topbar-menu hr { border: none; border-top: 1px solid #e0e0e0; margin: 4px 0; }
+  .topbar-menu .empty { padding: 8px 16px; font-size: 12px; color: #8d8d8d; }
+
+  #breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 11px; font-weight: 400; color: #161616; }
+  #breadcrumb a { color: #00539a; text-decoration: none; }
+  #breadcrumb a:hover { text-decoration: underline; }
+  #breadcrumb .sep { color: #8d8d8d; }
+
+  #body { display: flex; min-height: calc(100vh - 48px); }
+  #sidebar { width: 256px; flex: 0 0 256px; background: #fff; border-right: 1px solid #e0e0e0; padding: 8px 0; overflow-y: auto; }
+  .nav-group-btn {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; border: none; background: transparent; cursor: pointer;
+    padding: 10px 16px 6px; font-size: 11px; font-weight: 600; color: #161616;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .nav-group-btn .caret { transition: transform .15s ease-out; font-size: 9px; color: #6f6f6f; }
+  .nav-group-btn[aria-expanded="false"] .caret { transform: rotate(-90deg); }
+  .nav-group-children.collapsed { display: none; }
+  #sidebar a { display: block; padding: 8px 16px; color: #161616; text-decoration: none; font-size: 13px; }
+  #sidebar a:hover { background: #e8e8e8; }
+  #sidebar a.active { background: #edf5ff; color: #00539a; font-weight: 600; border-left: 3px solid #0072c3; padding-left: 13px; }
+  #sidebar .child a { padding-left: 32px; }
+  #sidebar .child a.active { padding-left: 29px; }
+  #sidebar .toplevel > a { font-weight: 600; }
+
+  #content { flex: 1; padding: 24px 28px; }
+  #pageHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  h1 { font-size: 23px; font-weight: 400; margin: 0; }
+  #footerRow { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex: none; font-size: 11px; color: #525252; white-space: nowrap; }
+  #error { color: #da1e28; margin-bottom: 12px; display: none; }
+  button.action { padding: 6px 14px; cursor: pointer; font-family: inherit; font-size: 12.5px; }
+
+  .panel { background: #fff; border: 1px solid #e0e0e0; padding: 16px; }
+  #panels { display: flex; flex-wrap: wrap; align-items: stretch; gap: 16px; margin-bottom: 16px; }
+  #setupPanel { flex: 2 1 420px; min-width: 320px; }
+  #statsPanel { flex: 1 1 220px; min-width: 220px; }
+  #tunnelConfigPanel, #dgaConfigPanel { flex: 1 1 260px; min-width: 260px; }
+
+  .field-label { font-size: 12px; color: #525252; margin-bottom: 6px; }
+  .kv-block {
+    display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 8px 10px;
+    background: #fafafa; border: 1px solid #e0e0e0;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px;
+    overflow-x: auto; white-space: pre; word-break: break-all;
+  }
+  .kv-block .kv-val { flex: 1; }
+  #setupPanel p { margin: 0 0 10px; font-size: 11.5px; color: var(--text-secondary); }
+
+  .stat-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 12.5px; }
+  .stat-label { color: var(--text-secondary); }
+  .stat-val { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* At most RETENTION_DAYS (7) rows expected - the scroll is a safety net, not the norm. */
+  .day-size-list { max-height: 160px; overflow-y: auto; }
+  .day-size-list .stat-row { font-size: 11.5px; padding: 3px 0; }
+  .day-size-list .stat-empty { color: var(--text-muted); font-size: 11.5px; padding: 4px 0; }
+
+  .config-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12.5px; }
+  .config-row .cfg-label { color: var(--text-secondary); flex: 1; }
+  .config-row input {
+    width: 76px; height: 26px; padding: 0 6px; border: 1px solid #8d8d8d;
+    background: #fff; color: #161616; font-family: inherit; font-size: 12px; text-align: right;
+  }
+  .config-row input[type="text"] { width: 140px; text-align: left; }
+  .config-row .cfg-unit { color: var(--text-muted); font-size: 11px; width: 56px; flex: none; }
+  .config-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .config-status { font-size: 11px; margin-top: 6px; min-height: 14px; }
+  .config-status.ok { color: #0e6027; }
+  .config-status.error { color: #da1e28; }
+
+  #alertsHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 16px; }
+  #alertsHeader .field-label { margin: 0; }
+  select#windowSelect { height: 32px; padding: 0 10px; border: 1px solid #8d8d8d; background: #fff; color: #161616; font-family: inherit; font-size: 12.5px; }
+
+  /* table-layout: fixed + explicit per-column widths so long cell content (domain lists,
+     reason text) wraps within its own column instead of forcing the table wider than the
+     panel and triggering horizontal scroll. */
+  table { border-collapse: collapse; width: 100%; max-width: 100%; background: #fff; table-layout: fixed; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e0e0e0; overflow-wrap: break-word; }
+  th { font-size: 12px; font-weight: 600; color: #525252; }
+  td { font-size: 12.5px; vertical-align: top; word-break: break-word; }
+  td.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; word-break: break-all; }
+  td.reasons ul { margin: 0; padding-left: 16px; }
+  td.reasons li { margin-bottom: 2px; }
+
+  th:nth-child(1), td:nth-child(1) { width: 9%; }
+  th:nth-child(2), td:nth-child(2) { width: 12%; }
+  th:nth-child(3), td:nth-child(3) { width: 19%; }
+  th:nth-child(4), td:nth-child(4) { width: 10%; }
+  th:nth-child(5), td:nth-child(5) { width: 20%; }
+  th:nth-child(6), td:nth-child(6) { width: 20%; }
+  th:nth-child(7), td:nth-child(7) { width: 10%; }
+
+  .type-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; display: inline-block; white-space: nowrap; }
+  .type-tunneling { color: #a15c00; background: #fff3da; }
+  .type-dga { color: #a2191f; background: #fff1f1; }
+  #alertsEmpty { color: var(--text-muted); font-size: 12.5px; padding: 24px; text-align: center; display: none; }
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <a id="homeBtn" class="topbar-btn" href="/home">
+      <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16 2 2 14h4v14h9V19h2v9h9V14h4z"/></svg>
+      <span>Home</span>
+    </a>
+    <div class="brand"><img id="logo" alt="" style="height:18px;margin-right:8px;visibility:hidden;"> BLUECAT Gateway</div>
+    <div class="right">
+      <button class="topbar-btn" id="helpBtn" type="button">
+        <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2zm0 25a11 11 0 1 1 11-11 11 11 0 0 1-11 11z"/><path d="M17 22h-2v2h2zM16.5 8h-1A4.5 4.5 0 0 0 11 12.5h2A2.5 2.5 0 0 1 15.5 10h1a2.5 2.5 0 0 1 0 5H15v3.5h2V17a4.5 4.5 0 0 0-.5-9z"/></svg>
+        <span>Help</span>
+      </button>
+      <div class="topbar-menu" id="helpMenu"></div>
+
+      <button class="topbar-btn" id="systemBtn" type="button">
+        <svg viewBox="0 0 32 32" fill="currentColor"><path d="M27 16.76v-1.52l2.83-2.35-2.87-4.97-3.55 1.04a11 11 0 0 0-2.63-1.52L20 3.34h-5.94l-.78 3.4a11.1 11.1 0 0 0-2.63 1.53L7.1 7.23 4.23 12.2l2.83 2.35v1.52L4.23 18.4l2.87 4.97 3.55-1.04a11 11 0 0 0 2.63 1.52l.78 3.4h5.94l.78-3.4a11.1 11.1 0 0 0 2.63-1.53l3.55 1.04 2.87-4.97zM17 21.5a5.5 5.5 0 1 1 5.5-5.5 5.5 5.5 0 0 1-5.5 5.5z"/></svg>
+        <span>System</span>
+      </button>
+      <div class="topbar-menu" id="systemMenu"></div>
+
+      <button class="topbar-btn" id="accountBtn" type="button">
+        <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16 4a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm10 24H6v-2a8 8 0 0 1 8-8h4a8 8 0 0 1 8 8z"/></svg>
+        <span id="accountLabel">Account</span>
+      </button>
+      <div class="topbar-menu" id="accountMenu"></div>
+    </div>
+  </div>
+
+  <div id="body">
+    <nav id="sidebar"></nav>
+
+    <main id="content">
+      <div id="breadcrumb">
+        <span class="sep">&#8249;</span>
+        <a id="breadcrumbHome" href="/home">Home</a>
+        <span class="sep">&middot;</span>
+        <span>DNS Tunneling/DGA Threat Alerts</span>
+      </div>
+      <div id="pageHeader">
+        <h1>DNS Tunneling/DGA Threat Alerts</h1>
+        <div id="footerRow">
+          <span>Last updated: <span id="lastUpdated">-</span> &middot; auto-refresh every 30s</span>
+          <button class="action" id="refreshBtn">Refresh now</button>
+        </div>
+      </div>
+      <div id="error"></div>
+
+      <div id="panels">
+        <section class="panel" id="setupPanel">
+          <h2 style="font-size:14px;margin:0 0 8px;">BDDS Ingest Setup</h2>
+          <p>In BAM, configure DNS Activity Logging &rarr; Destination &rarr; Type "HTTP" on each BDDS, using the
+             Output URI below as-is (token is embedded as a query param - this Gateway install runs Flask under
+             Apache/mod_wsgi, which strips the <code>Authorization</code> header before it reaches any workflow,
+             so the header-based Bearer Token field in BAM won't work here). The token is generated by this
+             workflow on first load and persists across redeploys - regenerate is not exposed here on purpose,
+             since rotating it would silently break ingest until BAM is updated too.</p>
+          <div class="field-label">Output URI (paste this exactly)</div>
+          <div class="kv-block"><span class="kv-val" id="ingestUrl">loading...</span><button class="action copyBtn" data-target="ingestUrl">Copy</button></div>
+          <div class="field-label">Raw token (for reference only)</div>
+          <div class="kv-block"><span class="kv-val" id="ingestToken">loading...</span><button class="action copyBtn" data-target="ingestToken">Copy</button></div>
+          <div class="field-label">Healthcheck URI (optional, unauthenticated)</div>
+          <div class="kv-block"><span class="kv-val" id="healthUrl">loading...</span><button class="action copyBtn" data-target="healthUrl">Copy</button></div>
+        </section>
+
+        <section class="panel" id="statsPanel">
+          <h2 style="font-size:14px;margin:0 0 8px;">Storage</h2>
+          <div class="stat-row"><span class="stat-label">Days retained</span><span class="stat-val" id="statDays">-</span></div>
+          <div class="stat-row"><span class="stat-label">Total events</span><span class="stat-val" id="statEvents">-</span></div>
+          <div class="stat-row"><span class="stat-label">Total size</span><span class="stat-val" id="statTotalSize">-</span></div>
+          <div class="stat-row"><span class="stat-label">Oldest day</span><span class="stat-val" id="statOldest">-</span></div>
+          <div class="stat-row"><span class="stat-label">Newest day</span><span class="stat-val" id="statNewest">-</span></div>
+          <div class="field-label" style="margin-top:10px;">Per-day file size</div>
+          <div id="statDaySizes" class="day-size-list"></div>
+        </section>
+
+        <section class="panel" id="tunnelConfigPanel">
+          <h2 style="font-size:14px;margin:0 0 8px;">Tunneling Detection Config</h2>
+          <div class="config-row"><span class="cfg-label">Window</span><input type="number" id="tcWindow" min="1" step="1"><span class="cfg-unit">min</span></div>
+          <div class="config-row"><span class="cfg-label">Min queries</span><input type="number" id="tcMinQueries" min="1" step="1"><span class="cfg-unit"></span></div>
+          <div class="config-row"><span class="cfg-label">Suspicious qtypes</span><input type="text" id="tcQtypes"><span class="cfg-unit"></span></div>
+          <div class="config-row"><span class="cfg-label">Qtype ratio</span><input type="number" id="tcQtypeRatio" min="0" max="100" step="1"><span class="cfg-unit">%</span></div>
+          <div class="config-row"><span class="cfg-label">Unique subdomains</span><input type="number" id="tcUniqueSubdomains" min="1" step="1"><span class="cfg-unit"></span></div>
+          <div class="config-row"><span class="cfg-label">Avg query length</span><input type="number" id="tcAvgQlen" min="0" step="1"><span class="cfg-unit">chars</span></div>
+          <div class="config-row"><span class="cfg-label">Query rate</span><input type="number" id="tcQueryRate" min="1" step="1"><span class="cfg-unit">/window</span></div>
+          <div class="config-actions">
+            <button class="action" id="tcSaveBtn">Save</button>
+            <button class="action" id="tcResetBtn">Reset to defaults</button>
+          </div>
+          <div class="config-status" id="tcStatus"></div>
+        </section>
+
+        <section class="panel" id="dgaConfigPanel">
+          <h2 style="font-size:14px;margin:0 0 8px;">DGA Detection Config</h2>
+          <div class="config-row"><span class="cfg-label">Window</span><input type="number" id="dcWindow" min="1" step="1"><span class="cfg-unit">min</span></div>
+          <div class="config-row"><span class="cfg-label">Min distinct domains</span><input type="number" id="dcMinDomains" min="1" step="1"><span class="cfg-unit"></span></div>
+          <div class="config-row"><span class="cfg-label">Min label length</span><input type="number" id="dcMinLabelLen" min="1" step="1"><span class="cfg-unit">chars</span></div>
+          <div class="config-row"><span class="cfg-label">Label entropy</span><input type="number" id="dcEntropy" min="0" step="0.1"><span class="cfg-unit">bits/ch</span></div>
+          <div class="config-row"><span class="cfg-label">NXDOMAIN ratio</span><input type="number" id="dcNxRatio" min="0" max="100" step="1"><span class="cfg-unit">%</span></div>
+          <div class="config-row"><span class="cfg-label">Avg entropy</span><input type="number" id="dcAvgEntropy" min="0" step="0.1"><span class="cfg-unit">bits/ch</span></div>
+          <div class="config-actions">
+            <button class="action" id="dcSaveBtn">Save</button>
+            <button class="action" id="dcResetBtn">Reset to defaults</button>
+          </div>
+          <div class="config-status" id="dcStatus"></div>
+        </section>
+      </div>
+
+      <div id="alertsHeader">
+        <h2 style="font-size:16px;margin:0;">Alerts</h2>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="field-label">Window</span>
+          <select id="windowSelect">
+            <option value="10">Last 10 minutes</option>
+            <option value="30">Last 30 minutes</option>
+            <option value="60">Last hour</option>
+            <option value="1440">Last 24 hours</option>
+          </select>
+        </div>
+      </div>
+
+      <section class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Client</th>
+              <th>Domain</th>
+              <th>Server</th>
+              <th>Evidence</th>
+              <th>Reasons</th>
+              <th>Last seen</th>
+            </tr>
+          </thead>
+          <tbody id="alertsBody"></tbody>
+        </table>
+        <div id="alertsEmpty">No alerts in this window.</div>
+      </section>
+    </main>
+  </div>
+
+<script>
+(function () {
+  var CURRENT_PATH = window.location.pathname;
+
+  function buildSidebar(navLinks) {
+    var sidebar = document.getElementById("sidebar");
+    sidebar.innerHTML = "";
+    var groupIndex = 0;
+
+    navLinks.forEach(function (item) {
+      if (item.children && item.children.length) {
+        groupIndex += 1;
+        var childrenId = "navgroup-" + groupIndex;
+
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "nav-group-btn";
+        btn.setAttribute("aria-expanded", "true");
+        btn.setAttribute("aria-controls", childrenId);
+
+        var label = document.createElement("span");
+        label.textContent = item.title;
+        var caret = document.createElement("span");
+        caret.className = "caret";
+        caret.textContent = "▾";
+        btn.appendChild(label);
+        btn.appendChild(caret);
+
+        var childrenWrap = document.createElement("div");
+        childrenWrap.className = "nav-group-children";
+        childrenWrap.id = childrenId;
+
+        item.children.forEach(function (child) {
+          var wrap = document.createElement("div");
+          wrap.className = "child";
+          wrap.appendChild(makeLink(child));
+          childrenWrap.appendChild(wrap);
+        });
+
+        btn.addEventListener("click", function () {
+          var expanded = btn.getAttribute("aria-expanded") === "true";
+          btn.setAttribute("aria-expanded", expanded ? "false" : "true");
+          childrenWrap.classList.toggle("collapsed", expanded);
+        });
+
+        sidebar.appendChild(btn);
+        sidebar.appendChild(childrenWrap);
+      } else if (item.href) {
+        var wrap = document.createElement("div");
+        wrap.className = "toplevel";
+        wrap.appendChild(makeLink(item));
+        sidebar.appendChild(wrap);
+      }
+    });
+  }
+
+  function makeLink(item) {
+    var a = document.createElement("a");
+    a.href = item.href;
+    a.textContent = item.title;
+    if (item.href === CURRENT_PATH) {
+      a.className = "active";
+    }
+    return a;
+  }
+
+  function populateMenu(el, entries) {
+    el.innerHTML = "";
+    if (!entries.length) {
+      var empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Nothing here yet.";
+      el.appendChild(empty);
+      return;
+    }
+    entries.forEach(function (entry) {
+      if (entry.divider) {
+        el.appendChild(document.createElement("hr"));
+        return;
+      }
+      if (entry.heading) {
+        var h = document.createElement("div");
+        h.className = "menu-heading";
+        h.textContent = entry.heading;
+        el.appendChild(h);
+        return;
+      }
+      var a = document.createElement("a");
+      a.href = entry.url;
+      a.textContent = entry.text;
+      if (/^https?:\/\//.test(entry.url)) a.target = "_blank";
+      el.appendChild(a);
+    });
+  }
+
+  function wireMenuButton(btnId, menuId) {
+    var btn = document.getElementById(btnId);
+    var menu = document.getElementById(menuId);
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var willOpen = !menu.classList.contains("open");
+      document.querySelectorAll(".topbar-menu.open").forEach(function (m) { m.classList.remove("open"); });
+      if (willOpen) menu.classList.add("open");
+    });
+  }
+
+  function loadChrome() {
+    ["helpBtn", "systemBtn", "accountBtn"].forEach(function (id, i) {
+      wireMenuButton(id, ["helpMenu", "systemMenu", "accountMenu"][i]);
+    });
+    document.addEventListener("click", function () {
+      document.querySelectorAll(".topbar-menu.open").forEach(function (m) { m.classList.remove("open"); });
+    });
+
+    fetch("/-/v3/navbar/data", { credentials: "same-origin" })
+      .then(function (resp) {
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.json();
+      })
+      .then(function (data) {
+        if (data.user) {
+          var homeUrl = data.user.home_url || "/home";
+          document.getElementById("homeBtn").href = homeUrl;
+          document.getElementById("breadcrumbHome").href = homeUrl;
+          document.getElementById("accountLabel").textContent = data.user.username || "Account";
+          buildSidebar(data.user.nav_links || []);
+
+          var helpEntries = [].concat(
+            (data.user.help_links && data.user.help_links.platform) || [],
+            (data.user.help_links && data.user.help_links.custom) || []
+          ).map(function (l) { return { text: l.title, url: l.url }; });
+          populateMenu(document.getElementById("helpMenu"), helpEntries);
+
+          return fetch("/-/v3/dropdown_menu/data", { credentials: "same-origin" })
+            .then(function (r) { return r.ok ? r.json() : { dropdown_menu: [] }; })
+            .then(function (dropdown) {
+              var items = dropdown.dropdown_menu || [];
+              var systemEntries = items.filter(function (i) {
+                return /log/i.test(i.text);
+              }).map(function (i) { return { text: i.text, url: i.url }; });
+              var accountEntries = items.filter(function (i) {
+                return !/log/i.test(i.text);
+              }).map(function (i) { return { text: i.text, url: i.url }; });
+              accountEntries.push({ divider: true });
+              accountEntries.push({ text: "Log out", url: "/logout" });
+
+              populateMenu(document.getElementById("systemMenu"), systemEntries);
+              populateMenu(document.getElementById("accountMenu"), accountEntries);
+            });
+        }
+      })
+      .catch(function () {
+        populateMenu(document.getElementById("helpMenu"), []);
+        populateMenu(document.getElementById("systemMenu"), []);
+        populateMenu(document.getElementById("accountMenu"), [{ text: "Log out", url: "/logout" }]);
+      });
+  }
+
+  loadChrome();
+})();
+
+(function () {
+  var API_BASE = "/dns_tunneling_dga_threat_alerts/v1";
+  var REFRESH_MS = 30000;
+
+  function escapeHtml(s) {
+    var div = document.createElement("div");
+    div.textContent = s == null ? "" : String(s);
+    return div.innerHTML;
+  }
+
+  function showError(message) {
+    var el = document.getElementById("error");
+    if (message) {
+      el.textContent = message;
+      el.style.display = "block";
+    } else {
+      el.style.display = "none";
+    }
+  }
+
+  function loadSetup() {
+    fetch(API_BASE + "/ingest/token", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)); })
+      .then(function (data) {
+        // Always plain HTTP, regardless of the scheme/port this page itself was loaded over -
+        // the ingest vhost (container port 8000, mapped to host port 80) has no TLS, and BAM's
+        // HTTPS destination type would need a Certificate that regenerates on every Gateway
+        // restart, so HTTP is the deliberate choice here, not an oversight.
+        var origin = "http://" + window.location.hostname;
+        document.getElementById("ingestUrl").textContent = origin + data.ingest_path + data.ingest_query;
+        document.getElementById("ingestToken").textContent = data.token;
+        document.getElementById("healthUrl").textContent = origin + data.ingest_path + "/health";
+      })
+      .catch(function () {
+        document.getElementById("ingestUrl").textContent = "(failed to load - refresh the page)";
+        document.getElementById("ingestToken").textContent = "(failed to load)";
+        document.getElementById("healthUrl").textContent = "(failed to load)";
+      });
+  }
+
+  function formatBytes(bytes) {
+    if (bytes == null) return "-";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+  }
+
+  function loadStats() {
+    fetch(API_BASE + "/alerts/stats", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)); })
+      .then(function (data) {
+        var days = data.days || [];
+        document.getElementById("statDays").textContent = days.length;
+        document.getElementById("statEvents").textContent = data.total_events;
+        document.getElementById("statTotalSize").textContent = formatBytes(data.total_bytes);
+        document.getElementById("statOldest").textContent = days.length ? days[0].day : "-";
+        document.getElementById("statNewest").textContent = days.length ? days[days.length - 1].day : "-";
+
+        var listEl = document.getElementById("statDaySizes");
+        listEl.innerHTML = "";
+        if (!days.length) {
+          var empty = document.createElement("div");
+          empty.className = "stat-empty";
+          empty.textContent = "No data yet.";
+          listEl.appendChild(empty);
+        } else {
+          days.slice().reverse().forEach(function (d) {
+            var row = document.createElement("div");
+            row.className = "stat-row";
+            var label = document.createElement("span");
+            label.className = "stat-label";
+            label.textContent = d.day + (d.compressed ? " (gz)" : "");
+            var val = document.createElement("span");
+            val.className = "stat-val";
+            val.textContent = formatBytes(d.bytes) + " (" + d.events + ")";
+            row.appendChild(label);
+            row.appendChild(val);
+            listEl.appendChild(row);
+          });
+        }
+      })
+      .catch(function () { /* non-fatal - alerts table still loads independently */ });
+  }
+
+  function applyConfigToForm(data) {
+    var t = data.tunneling, d = data.dga;
+    document.getElementById("tcWindow").value = t.window_minutes;
+    document.getElementById("tcMinQueries").value = t.min_queries;
+    document.getElementById("tcQtypes").value = t.suspicious_qtypes.join(",");
+    document.getElementById("tcQtypeRatio").value = Math.round(t.qtype_ratio_threshold * 100);
+    document.getElementById("tcUniqueSubdomains").value = t.unique_subdomain_threshold;
+    document.getElementById("tcAvgQlen").value = t.avg_qlen_threshold;
+    document.getElementById("tcQueryRate").value = t.query_rate_threshold;
+
+    document.getElementById("dcWindow").value = d.window_minutes;
+    document.getElementById("dcMinDomains").value = d.min_distinct_domains;
+    document.getElementById("dcMinLabelLen").value = d.min_label_len;
+    document.getElementById("dcEntropy").value = d.entropy_threshold;
+    document.getElementById("dcNxRatio").value = Math.round(d.nxdomain_ratio_threshold * 100);
+    document.getElementById("dcAvgEntropy").value = d.avg_entropy_threshold;
+  }
+
+  function loadDetectorConfig() {
+    fetch(API_BASE + "/alerts/config", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)); })
+      .then(applyConfigToForm)
+      .catch(function () { /* non-fatal - form just stays at whatever it last had */ });
+  }
+
+  function showConfigStatus(statusElId, message, isError) {
+    var el = document.getElementById(statusElId);
+    el.textContent = message;
+    el.className = "config-status " + (isError ? "error" : "ok");
+    setTimeout(function () {
+      el.textContent = "";
+      el.className = "config-status";
+    }, 4000);
+  }
+
+  function collectConfigFromForm(section) {
+    if (section === "tunneling") {
+      return {
+        window_minutes: Number(document.getElementById("tcWindow").value),
+        min_queries: Number(document.getElementById("tcMinQueries").value),
+        suspicious_qtypes: document.getElementById("tcQtypes").value.split(",")
+          .map(function (s) { return s.trim(); }).filter(Boolean),
+        qtype_ratio_threshold: Number(document.getElementById("tcQtypeRatio").value) / 100,
+        unique_subdomain_threshold: Number(document.getElementById("tcUniqueSubdomains").value),
+        avg_qlen_threshold: Number(document.getElementById("tcAvgQlen").value),
+        query_rate_threshold: Number(document.getElementById("tcQueryRate").value),
+      };
+    }
+    return {
+      window_minutes: Number(document.getElementById("dcWindow").value),
+      min_distinct_domains: Number(document.getElementById("dcMinDomains").value),
+      min_label_len: Number(document.getElementById("dcMinLabelLen").value),
+      entropy_threshold: Number(document.getElementById("dcEntropy").value),
+      nxdomain_ratio_threshold: Number(document.getElementById("dcNxRatio").value) / 100,
+      avg_entropy_threshold: Number(document.getElementById("dcAvgEntropy").value),
+    };
+  }
+
+  function saveConfigSection(section) {
+    var statusElId = section === "tunneling" ? "tcStatus" : "dcStatus";
+    var body = {};
+    body[section] = collectConfigFromForm(section);
+    fetch(API_BASE + "/alerts/config", {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok) throw new Error(result.data.error || "save failed");
+        applyConfigToForm(result.data);
+        showConfigStatus(statusElId, "Saved.", false);
+        loadAlerts();
+      })
+      .catch(function (e) { showConfigStatus(statusElId, e.message, true); });
+  }
+
+  function resetConfigSection(section) {
+    var statusElId = section === "tunneling" ? "tcStatus" : "dcStatus";
+    fetch(API_BASE + "/alerts/config/reset", {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ section: section }),
+    })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)); })
+      .then(function (data) {
+        applyConfigToForm(data);
+        showConfigStatus(statusElId, "Reset to defaults.", false);
+        loadAlerts();
+      })
+      .catch(function () { showConfigStatus(statusElId, "Reset failed.", true); });
+  }
+
+  function renderReasons(reasons) {
+    if (!reasons || !reasons.length) return "-";
+    return "<ul>" + reasons.map(function (r) { return "<li>" + escapeHtml(r) + "</li>"; }).join("") + "</ul>";
+  }
+
+  function renderEvidence(alert) {
+    if (alert.type === "tunneling") {
+      return escapeHtml(alert.query_count) + " queries, " + escapeHtml(alert.unique_subdomains) +
+        " unique subdomains, avg len " + escapeHtml(alert.avg_qlen);
+    }
+    return escapeHtml(alert.distinct_domains) + " distinct domains, " +
+      Math.round(alert.nxdomain_ratio * 100) + "% NXDOMAIN, avg entropy " + escapeHtml(alert.avg_entropy);
+  }
+
+  function loadAlerts() {
+    var windowMinutes = document.getElementById("windowSelect").value;
+    fetch(API_BASE + "/alerts?window=" + encodeURIComponent(windowMinutes), { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)); })
+      .then(function (data) {
+        showError(null);
+        var alerts = data.alerts || [];
+        var body = document.getElementById("alertsBody");
+        body.innerHTML = "";
+        document.getElementById("alertsEmpty").style.display = alerts.length ? "none" : "block";
+        alerts.forEach(function (alert) {
+          var tr = document.createElement("tr");
+          var badgeClass = alert.type === "tunneling" ? "type-tunneling" : "type-dga";
+          var domain = alert.type === "tunneling" ? alert.domain : (alert.sample_domains || []).join(", ");
+          tr.innerHTML =
+            "<td><span class=\"type-badge " + badgeClass + "\">" + escapeHtml(alert.type) + "</span></td>" +
+            "<td class=\"mono\">" + escapeHtml(alert.client) + "</td>" +
+            "<td class=\"mono\">" + escapeHtml(domain) + "</td>" +
+            "<td class=\"mono\">" + escapeHtml(alert.server) + "</td>" +
+            "<td>" + renderEvidence(alert) + "</td>" +
+            "<td class=\"reasons\">" + renderReasons(alert.reasons) + "</td>" +
+            "<td>" + new Date(alert.last_seen * 1000).toLocaleString() + "</td>";
+          body.appendChild(tr);
+        });
+        document.getElementById("lastUpdated").textContent = new Date().toLocaleTimeString();
+      })
+      .catch(function (e) {
+        showError("Failed to load alerts: " + e.message);
+      });
+  }
+
+  function refreshAll() {
+    loadStats();
+    loadAlerts();
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+  document.getElementById("windowSelect").addEventListener("change", loadAlerts);
+  document.querySelectorAll(".copyBtn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var target = document.getElementById(btn.getAttribute("data-target"));
+      navigator.clipboard.writeText(target.textContent).catch(function () {});
+    });
+  });
+  document.getElementById("tcSaveBtn").addEventListener("click", function () { saveConfigSection("tunneling"); });
+  document.getElementById("tcResetBtn").addEventListener("click", function () { resetConfigSection("tunneling"); });
+  document.getElementById("dcSaveBtn").addEventListener("click", function () { saveConfigSection("dga"); });
+  document.getElementById("dcResetBtn").addEventListener("click", function () { resetConfigSection("dga"); });
+
+  loadSetup();
+  loadDetectorConfig();
+  refreshAll();
+  setInterval(refreshAll, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
