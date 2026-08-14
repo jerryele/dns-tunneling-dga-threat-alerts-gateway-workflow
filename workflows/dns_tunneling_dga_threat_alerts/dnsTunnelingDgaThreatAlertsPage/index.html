@@ -254,6 +254,7 @@
           <div class="config-row"><span class="cfg-label">Unique subdomains</span><input type="number" id="tcUniqueSubdomains" min="1" step="1"><span class="cfg-unit"></span></div>
           <div class="config-row"><span class="cfg-label">Avg query length</span><input type="number" id="tcAvgQlen" min="0" step="1"><span class="cfg-unit">chars</span></div>
           <div class="config-row"><span class="cfg-label">Query rate</span><input type="number" id="tcQueryRate" min="1" step="1"><span class="cfg-unit">/window</span></div>
+          <div class="config-row"><span class="cfg-label">Min signals required</span><input type="number" id="tcMinSignals" min="1" max="4" step="1"><span class="cfg-unit">of 4</span></div>
           <div class="config-actions">
             <button class="action" id="tcSaveBtn">Save</button>
             <button class="action" id="tcResetBtn">Reset to defaults</button>
@@ -565,6 +566,7 @@
     document.getElementById("tcUniqueSubdomains").value = t.unique_subdomain_threshold;
     document.getElementById("tcAvgQlen").value = t.avg_qlen_threshold;
     document.getElementById("tcQueryRate").value = t.query_rate_threshold;
+    document.getElementById("tcMinSignals").value = t.min_signals;
 
     document.getElementById("dcWindow").value = d.window_minutes;
     document.getElementById("dcMinDomains").value = d.min_distinct_domains;
@@ -602,6 +604,7 @@
         unique_subdomain_threshold: Number(document.getElementById("tcUniqueSubdomains").value),
         avg_qlen_threshold: Number(document.getElementById("tcAvgQlen").value),
         query_rate_threshold: Number(document.getElementById("tcQueryRate").value),
+        min_signals: Number(document.getElementById("tcMinSignals").value),
       };
     }
     return {

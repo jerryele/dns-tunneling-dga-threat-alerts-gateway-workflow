@@ -27,6 +27,9 @@ TUNNEL_QTYPE_RATIO_THRESHOLD = 0.3  # >=30% of queries to one apex domain are su
 TUNNEL_UNIQUE_SUBDOMAIN_THRESHOLD = 50  # unique first-level labels under one apex domain
 TUNNEL_AVG_QLEN_THRESHOLD = 80  # avg full domain-name length in chars (typical real names < 40)
 TUNNEL_QUERY_RATE_THRESHOLD = 100  # queries to one apex domain from one client, within the window
+TUNNEL_MIN_SIGNALS = 2  # how many of the 4 signals above must co-occur before alerting - a
+# single signal alone (e.g. just raw query count) is too easily crossed by ordinary heavy
+# traffic to a popular domain or a CDN's naturally large edge-subdomain pool
 
 # --- DGA heuristics (per client, over the same sliding window) ---
 DGA_WINDOW_MINUTES = 10

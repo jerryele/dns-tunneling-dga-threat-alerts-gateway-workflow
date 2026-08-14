@@ -25,13 +25,18 @@ _NONNEGATIVE_NUMBER_FIELDS = frozenset({"avg_qlen_threshold", "entropy_threshold
 _SCHEMA = {
     "tunneling": frozenset({
         "window_minutes", "min_queries", "suspicious_qtypes", "qtype_ratio_threshold",
-        "unique_subdomain_threshold", "avg_qlen_threshold", "query_rate_threshold",
+        "unique_subdomain_threshold", "avg_qlen_threshold", "query_rate_threshold", "min_signals",
     }),
     "dga": frozenset({
         "window_minutes", "min_distinct_domains", "min_label_len", "entropy_threshold",
         "nxdomain_ratio_threshold", "avg_entropy_threshold",
     }),
 }
+
+# How many independent tunneling signals must fire together for an alert - bounded to [1, 4]
+# since there are exactly 4 possible signals (qtype ratio, unique subdomains, avg query
+# length, raw query rate).
+_MIN_SIGNALS_RANGE = (1, 4)
 
 
 def _defaults() -> dict:
@@ -44,6 +49,7 @@ def _defaults() -> dict:
             "unique_subdomain_threshold": constants.TUNNEL_UNIQUE_SUBDOMAIN_THRESHOLD,
             "avg_qlen_threshold": constants.TUNNEL_AVG_QLEN_THRESHOLD,
             "query_rate_threshold": constants.TUNNEL_QUERY_RATE_THRESHOLD,
+            "min_signals": constants.TUNNEL_MIN_SIGNALS,
         },
         "dga": {
             "window_minutes": constants.DGA_WINDOW_MINUTES,
@@ -84,6 +90,11 @@ def _validate_field(section: str, key: str, value) -> object:
 
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError("{}.{} must be a number".format(section, key))
+    if key == "min_signals":
+        lo, hi = _MIN_SIGNALS_RANGE
+        if value != int(value) or not (lo <= value <= hi):
+            raise ValueError("{}.{} must be an integer between {} and {}".format(section, key, lo, hi))
+        return int(value)
     if key in _RATIO_FIELDS and not (0 <= value <= 1):
         raise ValueError("{}.{} must be between 0 and 1".format(section, key))
     if key in _POSITIVE_NUMBER_FIELDS and value <= 0:

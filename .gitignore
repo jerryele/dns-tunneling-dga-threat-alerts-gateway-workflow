@@ -3,3 +3,6 @@ __pycache__/
 *.egg-info/
 .DS_Store
 Thumbs.db
+
+# Release tarballs are built locally and attached to GitHub releases, not tracked in git.
+*.tar.gz

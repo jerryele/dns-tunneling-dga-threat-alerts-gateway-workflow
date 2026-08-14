@@ -85,6 +85,17 @@ these are just the shipped defaults.
 | Unique subdomains under one apex domain | ≥ 50 |
 | Average full query-name length | ≥ 80 chars |
 | Raw query rate to one apex domain | ≥ 100 in the window |
+| **Signals that must co-occur before alerting** | **≥ 2 of the 4 above** |
+
+A single signal alone is too easily crossed by ordinary heavy traffic (raw query count, or a
+CDN's naturally large pool of edge subdomains) — genuine tunneling shows multiple signals
+together. `?window=<minutes>` on the alerts endpoint doesn't change how sensitive detection is:
+internally, the requested history is scanned in fixed 10-minute buckets (the length the
+thresholds above were tuned against), and any bucket independently crossing the signal
+threshold raises an alert. A `?window=1440` (24h) request means "check every 10-minute slice in
+the last day for a burst," not "compare one day-long aggregate against a day-scaled threshold" —
+the latter both let ordinary daily traffic to popular domains false-positive on raw count alone,
+and diluted genuine short bursts into invisibility once averaged over a whole day.
 
 ### DGA (per client, over a 10-minute window)
 
